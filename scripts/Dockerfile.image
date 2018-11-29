@@ -1,0 +1,55 @@
+FROM dom0-builder-qemu_aarch64-package AS dom0-builder-qemu_aarch64-package
+
+FROM arm64v8/alpine:3.7
+
+COPY [ \
+  "./docker-extras/*", \
+  "/tmp/docker-build/" \
+]
+
+# TODO: This needs to be moved into a container
+COPY ./viryaos-xen.tar.gz /home/builder/viryaos-xen.tar.gz
+COPY ./viryaos.dtb /home/builder/viryaos.dtb
+
+COPY [ \
+  "qemu-aarch64", \
+  "/usr/bin/qemu-aarch64" \
+]
+
+RUN \
+  # Add root to abuild group. This is required because we cannot su into user
+  # builder.
+  addgroup root abuild && \
+  # apk
+  apk update && \
+  \
+  apk add \
+    abuild \
+    alpine-baselayout \
+    alpine-conf \
+    device-mapper \
+    dosfstools \
+    e2fsprogs \
+    gcc \
+    mkinitfs \
+    mtools \
+    multipath-tools \
+    sgdisk \
+    squashfs-tools \
+    sudo \
+    util-linux \
+    vim  && \
+  \
+  # mtools
+  echo "mtools_skip_check=1" >> /etc/mtools.conf && \
+  \
+  # Copy vos_run file
+  cp /tmp/docker-build/vos_run /vos_run && \
+  chmod 755 /vos_run && \
+  \
+  # cleanup
+  cd /root && \
+  rm -rf /tmp/* && \
+  rm -f /var/cache/apk/*
+
+COPY --from=dom0-builder-qemu_aarch64-package /home/builder/output-dom0-builder-qemu_aarch64/ /home/builder/output-dom0-builder-qemu_aarch64/

@@ -1,0 +1,152 @@
+#!/bin/sh
+
+# This helps to see what is going on
+set -e -x
+
+DESTDIR="$(mktemp -d /tmp/imagebuilder-qemu_aarch64.XXXXXX)"
+
+# copy output artifacts to DESTDIR
+cp -r /home/builder/output-dom0-builder-qemu_aarch64 ${DESTDIR}
+
+cp /home/builder/viryaos.dtb ${DESTDIR}
+
+mkdir ${DESTDIR}/viryaos-xen 
+cd ${DESTDIR}/viryaos-xen 
+tar zxvf /home/builder/viryaos-xen.tar.gz
+
+cd ${DESTDIR}
+
+_vmlinuz=$(basename ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-*)
+_fullkver=${_vmlinuz#vmlinuz-}
+
+# startup.nsh
+echo "xen.efi" > ${DESTDIR}/startup.nsh
+echo "options=dom0_mem=1G" > ${DESTDIR}/xen.cfg
+echo "kernel=vmlinuz-${_fullkver} console=hvc0 modules=loop,squashfs rootfs_cpio" >> ${DESTDIR}/xen.cfg
+echo "ramdisk=initramfs-${_fullkver}" >> ${DESTDIR}/xen.cfg
+echo "dtb=viryaos.dtb" >> ${DESTDIR}/xen.cfg
+
+OUTDIR="/tmp/img"
+mkdir ${OUTDIR}
+
+IMG="${OUTDIR}/qemu_aarch64.img"
+
+# Both GPT partitions and VFAT filesystem uses 512 as the default
+# sector size
+_sector_size=512 
+_esp_file="${DESTDIR}/esp.img"
+
+# For now we assume 16384 KiB, which is 32768 sectors
+_esp_file_size_kib=16384
+
+# There is no GRUB
+mkfs.vfat -v -C $_esp_file $_esp_file_size_kib
+mmd -i $_esp_file ::/EFI
+mmd -i $_esp_file ::/EFI/ViryaOS
+mcopy -i $_esp_file -s ${DESTDIR}/startup.nsh ::/
+
+mcopy -i $_esp_file -s ${DESTDIR}/viryaos-xen/boot/xen-4.11.0 ::/xen.efi
+mcopy -i $_esp_file -s ${DESTDIR}/xen.cfg ::/xen.cfg
+mcopy -i $_esp_file -s ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-${_fullkver} ::/
+mcopy -i $_esp_file -s ${DESTDIR}/output-dom0-builder-qemu_aarch64/initramfs-${_fullkver} ::/
+mcopy -i $_esp_file -s ${DESTDIR}/output-dom0-builder-qemu_aarch64/modloop-${_fullkver} ::/
+mcopy -i $_esp_file -s ${DESTDIR}/viryaos.dtb ::/
+
+# NOTE: Increase vos_a to 256 to accomodate rootfs
+# 528 MiB (256 + 256 + 16)
+truncate $IMG -s 528M
+
+# create GPT partition table
+sgdisk -og $IMG
+
+_esp_file_size_bytes=$(( $_esp_file_size_kib * 1024 ))
+_esp_file_size_sectors=$(( $_esp_file_size_bytes / $_sector_size ))
+
+# start ESP at sector 2048
+_esp_sector_start=2048
+_esp_sector_end=$(( $_esp_sector_start + $_esp_file_size_sectors - 1 ))
+
+# create EFI System Partition
+sgdisk -n 1:$_esp_sector_start:$_esp_sector_end -c 1:"EFI System Partition" -t 1:ef00 $IMG
+
+# copy ESP file over to IMG
+dd if=$_esp_file of=$IMG bs=$_sector_size count=$_esp_file_size_sectors conv=notrunc seek=$_esp_sector_start
+
+# _sector_first is obtained by running
+# ```
+# sgdisk -F /tmp/img/qemu_aarch64.img
+# ```
+_sector_first=34816
+
+# _sector_last is obtained by running
+# ```
+# sgdisk -n 2:34816:+256M -c 2:"Linux" -t 2:8300 /tmp/img/qemu_aarch64.img
+# ```
+_sector_last=559103
+
+# create linux partition
+sgdisk -n 2:$_sector_first:$_sector_last -c 2:"Linux" -t 2:8300 $IMG
+
+# _sector_first is obtained by running
+# ```
+# sgdisk -F /tmp/img/qemu_aarch64.img
+# ```
+_sector_first=559104
+
+# _sector_last is obtained by running
+# ```
+# sgdisk -E /tmp/img/qemu_aarch64.img
+# ```
+_sector_last=1081310
+
+sgdisk -n 3:$_sector_first:$_sector_last -c 3:"Linux" -t 3:8300 $IMG
+
+# find the first available loop device
+_loop_dev=$(sudo losetup -f)
+
+# attach loopback device to $IMG
+losetup $_loop_dev $IMG
+
+_disksize=$(sudo blockdev --getsize $_loop_dev)
+
+dmsetup create diskimage --table "0 $_disksize linear $_loop_dev 0"
+
+# ensure that /dev/mapper/diskimage exists
+while [ ! -b /dev/mapper/diskimage ]
+do                      
+	sleep 2
+done
+
+kpartx -a /dev/mapper/diskimage
+
+# ensure that /dev/mapper/{diskimage1,diskimage2,diskimage3} exists
+while [ ! -b /dev/mapper/diskimage1 ] || [ ! -b /dev/mapper/diskimage2 ] || [ ! -b /dev/mapper/diskimage3 ]
+do
+	sleep 2
+done
+								 
+# format vos_a partition
+# NOTE: vos_a and vos_b will have a dependency with initramfs-init script
+mkfs.ext4 -L vos_a -F /dev/mapper/diskimage2
+
+# format "extra" partition
+mkfs.ext4 -L extra -F /dev/mapper/diskimage3
+
+# create mount point and mount vos_a
+mkdir -p ${DESTDIR}/part/vos_a
+mount -t ext4 /dev/mapper/diskimage2 $DESTDIR/part/vos_a
+
+# Extract rootfs cpio archive into `.../part/vos_a`
+$(cd ${DESTDIR}/part/vos_a; cpio -idm < ${DESTDIR}/output-dom0-builder-qemu_aarch64/rootfs.cpio)
+
+# unmount
+sync
+
+# This fails for some reason.
+# fstrim $DESTDIR/part/vos_a
+
+umount $DESTDIR/part/vos_a
+kpartx -d /dev/mapper/diskimage
+dmsetup remove diskimage
+losetup -d $_loop_dev
+
