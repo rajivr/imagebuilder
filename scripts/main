@@ -82,24 +82,10 @@ _sector_first=34816
 # ```
 # sgdisk -n 2:34816:+256M -c 2:"Linux" -t 2:8300 /tmp/img/qemu_aarch64.img
 # ```
-_sector_last=559103
+_sector_last=1081310
 
 # create linux partition
 sgdisk -n 2:$_sector_first:$_sector_last -c 2:"Linux" -t 2:8300 $IMG
-
-# _sector_first is obtained by running
-# ```
-# sgdisk -F /tmp/img/qemu_aarch64.img
-# ```
-_sector_first=559104
-
-# _sector_last is obtained by running
-# ```
-# sgdisk -E /tmp/img/qemu_aarch64.img
-# ```
-_sector_last=1081310
-
-sgdisk -n 3:$_sector_first:$_sector_last -c 3:"Linux" -t 3:8300 $IMG
 
 # find the first available loop device
 _loop_dev=$(sudo losetup -f)
@@ -120,7 +106,7 @@ done
 kpartx -a /dev/mapper/diskimage
 
 # ensure that /dev/mapper/{diskimage1,diskimage2,diskimage3} exists
-while [ ! -b /dev/mapper/diskimage1 ] || [ ! -b /dev/mapper/diskimage2 ] || [ ! -b /dev/mapper/diskimage3 ]
+while [ ! -b /dev/mapper/diskimage1 ] || [ ! -b /dev/mapper/diskimage2 ]
 do
 	sleep 2
 done
@@ -128,9 +114,6 @@ done
 # format vos_a partition
 # NOTE: vos_a and vos_b will have a dependency with initramfs-init script
 mkfs.ext4 -L vos_a -F /dev/mapper/diskimage2
-
-# format "extra" partition
-mkfs.ext4 -L extra -F /dev/mapper/diskimage3
 
 # create mount point and mount vos_a
 mkdir -p ${DESTDIR}/part/vos_a

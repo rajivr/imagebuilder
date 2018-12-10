@@ -12,8 +12,8 @@ COPY ./viryaos-xen.tar.gz /home/builder/viryaos-xen.tar.gz
 COPY ./viryaos.dtb /home/builder/viryaos.dtb
 
 COPY [ \
-  "qemu-aarch64", \
-  "/usr/bin/qemu-aarch64" \
+  "qemu-aarch64-static", \
+  "/usr/bin/qemu-aarch64-static" \
 ]
 
 RUN \
