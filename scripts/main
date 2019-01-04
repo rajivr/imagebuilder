@@ -7,6 +7,7 @@ DESTDIR="$(mktemp -d /tmp/imagebuilder-qemu_aarch64.XXXXXX)"
 
 # copy output artifacts to DESTDIR
 cp -r /home/builder/output-dom0-builder-qemu_aarch64 ${DESTDIR}
+cp -r /home/builder/output-viryaos-grub-aarch64 ${DESTDIR}
 
 cp /home/builder/viryaos.dtb ${DESTDIR}
 
@@ -20,7 +21,7 @@ _vmlinuz=$(basename ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-*)
 _fullkver=${_vmlinuz#vmlinuz-}
 
 # startup.nsh
-echo "xen.efi" > ${DESTDIR}/startup.nsh
+echo "BOOTAA64.EFI" > ${DESTDIR}/startup.nsh
 echo "options=dom0_mem=1G" > ${DESTDIR}/xen.cfg
 echo "kernel=vmlinuz-${_fullkver} console=hvc0 modules=loop,squashfs rootfs_cpio" >> ${DESTDIR}/xen.cfg
 echo "ramdisk=initramfs-${_fullkver}" >> ${DESTDIR}/xen.cfg
@@ -45,7 +46,7 @@ mmd -i $_esp_file ::/EFI
 mmd -i $_esp_file ::/EFI/ViryaOS
 mcopy -i $_esp_file -s ${DESTDIR}/startup.nsh ::/
 
-mcopy -i $_esp_file -s ${DESTDIR}/viryaos-xen/boot/xen-4.11.0 ::/xen.efi
+mcopy -i $_esp_file -s ${DESTDIR}/output-viryaos-grub-aarch64/BOOTAA64.EFI ::/
 mcopy -i $_esp_file -s ${DESTDIR}/xen.cfg ::/xen.cfg
 mcopy -i $_esp_file -s ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-${_fullkver} ::/
 mcopy -i $_esp_file -s ${DESTDIR}/output-dom0-builder-qemu_aarch64/initramfs-${_fullkver} ::/
