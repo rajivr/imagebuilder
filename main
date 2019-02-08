@@ -22,12 +22,30 @@ cd ${DESTDIR}
 _vmlinuz=$(basename ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-*)
 _fullkver=${_vmlinuz#vmlinuz-}
 
-# startup.nsh
-echo "BOOTAA64.EFI" > ${DESTDIR}/startup.nsh
-echo "options=dom0_mem=1G" > ${DESTDIR}/xen.cfg
-echo "kernel=vmlinuz-${_fullkver} console=hvc0 modules=loop,squashfs rootfs_cpio" >> ${DESTDIR}/xen.cfg
-echo "ramdisk=initramfs-${_fullkver}" >> ${DESTDIR}/xen.cfg
-echo "dtb=viryaos.dtb" >> ${DESTDIR}/xen.cfg
+# remove unnecessary symlinks and config file
+find ${DESTDIR}/viryaos-xen/boot -type l -exec rm {} \;
+rm ${DESTDIR}/viryaos-xen/boot/xen-*.config
+
+_xen=$(basename ${DESTDIR}/viryaos-xen/boot/xen-*)
+_fullxenver=${_xen#xen-}
+
+# grub.cfg
+cat <<-EOF > ${DESTDIR}/grub.cfg
+set timeout=1
+set gfxpayload=text
+
+menuentry "Linux" {
+    insmod part_gpt
+    insmod ext2
+
+    set root=(hd2,gpt2)
+
+    xen_hypervisor /boot/xen-$_fullxenver placeholder dom0_mem=1G
+    xen_module     /boot/vmlinuz-$_fullkver console="hvc0" modules=loop,squashfs rootfs_cpio
+    xen_module     /boot/initramfs-$_fullkver
+    devicetree     /boot/viryaos.dtb
+}
+EOF
 
 OUTDIR="/tmp/img"
 mkdir ${OUTDIR}
@@ -42,18 +60,12 @@ _esp_file="${DESTDIR}/esp.img"
 # For now we assume 16384 KiB, which is 32768 sectors
 _esp_file_size_kib=16384
 
-# There is no GRUB
 mkfs.vfat -v -C $_esp_file $_esp_file_size_kib
 mmd -i $_esp_file ::/EFI
-mmd -i $_esp_file ::/EFI/ViryaOS
-mcopy -i $_esp_file -s ${DESTDIR}/startup.nsh ::/
+mmd -i $_esp_file ::/EFI/BOOT
 
-mcopy -i $_esp_file -s ${DESTDIR}/output-viryaos-grub-aarch64/BOOTAA64.EFI ::/
-mcopy -i $_esp_file -s ${DESTDIR}/xen.cfg ::/xen.cfg
-mcopy -i $_esp_file -s ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-${_fullkver} ::/
-mcopy -i $_esp_file -s ${DESTDIR}/output-dom0-builder-qemu_aarch64/initramfs-${_fullkver} ::/
-mcopy -i $_esp_file -s ${DESTDIR}/output-dom0-builder-qemu_aarch64/modloop-${_fullkver} ::/
-mcopy -i $_esp_file -s ${DESTDIR}/viryaos.dtb ::/
+mcopy -i $_esp_file -s ${DESTDIR}/output-viryaos-grub-aarch64/BOOTAA64.EFI ::/EFI/BOOT/
+mcopy -i $_esp_file -s ${DESTDIR}/grub.cfg ::/grub.cfg
 
 # NOTE: Increase vos_a to 256 to accomodate rootfs
 # 528 MiB (256 + 256 + 16)
@@ -124,6 +136,17 @@ mount -t ext4 /dev/mapper/diskimage2 $DESTDIR/part/vos_a
 
 # Extract rootfs cpio archive into `.../part/vos_a`
 $(cd ${DESTDIR}/part/vos_a; cpio -idm < ${DESTDIR}/output-dom0-builder-qemu_aarch64/rootfs.cpio)
+
+# copy over files needed in `/boot`
+mkdir ${DESTDIR}/part/vos_a/boot
+# linux
+cp ${DESTDIR}/output-dom0-builder-qemu_aarch64/initramfs-${_fullkver} ${DESTDIR}/part/vos_a/boot
+cp ${DESTDIR}/output-dom0-builder-qemu_aarch64/modloop-${_fullkver}   ${DESTDIR}/part/vos_a/boot
+cp ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-${_fullkver}   ${DESTDIR}/part/vos_a/boot
+# xen
+cp ${DESTDIR}/viryaos-xen/boot/xen-${_fullxenver}                     ${DESTDIR}/part/vos_a/boot
+# dtb
+cp ${DESTDIR}/viryaos.dtb                                             ${DESTDIR}/part/vos_a/boot
 
 # unmount
 sync
