@@ -1,4 +1,5 @@
 FROM dom0-builder-qemu_aarch64-package AS dom0-builder-qemu_aarch64-package
+FROM viryaos-xen-aarch64-package-boot AS viryaos-xen-aarch64-package-boot
 FROM viryaos-grub-aarch64-package as viryaos-grub-aarch64-package
 
 FROM arm64v8/alpine:3.7
@@ -8,8 +9,6 @@ COPY [ \
   "/tmp/docker-build/" \
 ]
 
-# TODO: This needs to be moved into a container
-COPY ./viryaos-xen.tar.gz /home/builder/viryaos-xen.tar.gz
 COPY ./viryaos.dtb /home/builder/viryaos.dtb
 
 COPY [ \
@@ -54,5 +53,7 @@ RUN \
   rm -f /var/cache/apk/*
 
 COPY --from=dom0-builder-qemu_aarch64-package /home/builder/output-dom0-builder-qemu_aarch64/ /home/builder/output-dom0-builder-qemu_aarch64/
+
+COPY --from=viryaos-xen-aarch64-package-boot /home/builder/output-viryaos-xen-boot-aarch64/ /home/builder/output-viryaos-xen-boot-aarch64/
 
 COPY --from=viryaos-grub-aarch64-package /home/builder/output-viryaos-grub-aarch64/ /home/builder/output-viryaos-grub-aarch64/

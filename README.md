@@ -3,7 +3,7 @@
 ## `Dockerfile.image`
 
 ```
-$ cd imagebuilder/scripts
+$ cd imagebuilder
 
 $ docker build --force-rm --squash --file Dockerfile.image -t imagebuilder .
 ```
