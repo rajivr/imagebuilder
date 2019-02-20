@@ -8,7 +8,7 @@ DESTDIR="$(mktemp -d /tmp/imagebuilder-qemu_aarch64.XXXXXX)"
 # copy output artifacts to DESTDIR
 cp -r /home/builder/output-dom0-builder-qemu_aarch64 ${DESTDIR}
 cp -r /home/builder/output-viryaos-xen-boot-aarch64 ${DESTDIR}
-cp -r /home/builder/output-viryaos-grub-aarch64 ${DESTDIR}
+cp -r /home/builder/output-viryaos-grub ${DESTDIR}
 
 cp /home/builder/viryaos.dtb ${DESTDIR}
 
@@ -64,7 +64,7 @@ mkfs.vfat -v -C $_esp_file $_esp_file_size_kib
 mmd -i $_esp_file ::/EFI
 mmd -i $_esp_file ::/EFI/BOOT
 
-mcopy -i $_esp_file -s ${DESTDIR}/output-viryaos-grub-aarch64/BOOTAA64.EFI ::/EFI/BOOT/
+mcopy -i $_esp_file -s ${DESTDIR}/output-viryaos-grub/BOOTAA64.EFI ::/EFI/BOOT/
 mcopy -i $_esp_file -s ${DESTDIR}/grub.cfg ::/grub.cfg
 
 # NOTE: Increase vos_a to 256 to accomodate rootfs
