@@ -7,7 +7,7 @@ DESTDIR="$(mktemp -d /tmp/imagebuilder-qemu_aarch64.XXXXXX)"
 
 # copy output artifacts to DESTDIR
 cp -r /home/builder/output-dom0-builder ${DESTDIR}
-cp -r /home/builder/output-viryaos-xen-boot-aarch64 ${DESTDIR}
+cp -r /home/builder/output-viryaos-xen-boot ${DESTDIR}
 cp -r /home/builder/output-viryaos-grub ${DESTDIR}
 
 cp /home/builder/viryaos.dtb ${DESTDIR}
@@ -15,7 +15,7 @@ cp /home/builder/viryaos.dtb ${DESTDIR}
 mkdir ${DESTDIR}/viryaos-xen 
 cd ${DESTDIR}/viryaos-xen 
 
-tar zxvf ${DESTDIR}/output-viryaos-xen-boot-aarch64/viryaos-xen-boot.tar.gz
+tar zxvf ${DESTDIR}/output-viryaos-xen-boot/viryaos-xen-boot.tar.gz
 
 cd ${DESTDIR}
 

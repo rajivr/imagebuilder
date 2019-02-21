@@ -1,5 +1,5 @@
 FROM dom0-builder-package AS dom0-builder-package
-FROM viryaos-xen-aarch64-package-boot AS viryaos-xen-aarch64-package-boot
+FROM viryaos-xen-package-boot AS viryaos-xen-package-boot
 FROM viryaos-grub-package as viryaos-grub-package
 
 FROM arm64v8/alpine:3.7
@@ -54,6 +54,6 @@ RUN \
 
 COPY --from=dom0-builder-package /home/builder/output-dom0-builder/ /home/builder/output-dom0-builder/
 
-COPY --from=viryaos-xen-aarch64-package-boot /home/builder/output-viryaos-xen-boot-aarch64/ /home/builder/output-viryaos-xen-boot-aarch64/
+COPY --from=viryaos-xen-package-boot /home/builder/output-viryaos-xen-boot/ /home/builder/output-viryaos-xen-boot/
 
 COPY --from=viryaos-grub-package /home/builder/output-viryaos-grub/ /home/builder/output-viryaos-grub/
