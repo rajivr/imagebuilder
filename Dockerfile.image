@@ -1,4 +1,4 @@
-FROM dom0-builder-qemu_aarch64-package AS dom0-builder-qemu_aarch64-package
+FROM dom0-builder-package AS dom0-builder-package
 FROM viryaos-xen-aarch64-package-boot AS viryaos-xen-aarch64-package-boot
 FROM viryaos-grub-package as viryaos-grub-package
 
@@ -52,7 +52,7 @@ RUN \
   rm -rf /tmp/* && \
   rm -f /var/cache/apk/*
 
-COPY --from=dom0-builder-qemu_aarch64-package /home/builder/output-dom0-builder-qemu_aarch64/ /home/builder/output-dom0-builder-qemu_aarch64/
+COPY --from=dom0-builder-package /home/builder/output-dom0-builder/ /home/builder/output-dom0-builder/
 
 COPY --from=viryaos-xen-aarch64-package-boot /home/builder/output-viryaos-xen-boot-aarch64/ /home/builder/output-viryaos-xen-boot-aarch64/
 

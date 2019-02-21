@@ -6,7 +6,7 @@ set -e -x
 DESTDIR="$(mktemp -d /tmp/imagebuilder-qemu_aarch64.XXXXXX)"
 
 # copy output artifacts to DESTDIR
-cp -r /home/builder/output-dom0-builder-qemu_aarch64 ${DESTDIR}
+cp -r /home/builder/output-dom0-builder ${DESTDIR}
 cp -r /home/builder/output-viryaos-xen-boot-aarch64 ${DESTDIR}
 cp -r /home/builder/output-viryaos-grub ${DESTDIR}
 
@@ -19,7 +19,7 @@ tar zxvf ${DESTDIR}/output-viryaos-xen-boot-aarch64/viryaos-xen-boot.tar.gz
 
 cd ${DESTDIR}
 
-_vmlinuz=$(basename ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-*)
+_vmlinuz=$(basename ${DESTDIR}/output-dom0-builder/vmlinuz-*)
 _fullkver=${_vmlinuz#vmlinuz-}
 
 # remove unnecessary symlinks and config file
@@ -135,14 +135,14 @@ mkdir -p ${DESTDIR}/part/vos_a
 mount -t ext4 /dev/mapper/diskimage2 $DESTDIR/part/vos_a
 
 # Extract rootfs cpio archive into `.../part/vos_a`
-$(cd ${DESTDIR}/part/vos_a; cpio -idm < ${DESTDIR}/output-dom0-builder-qemu_aarch64/rootfs.cpio)
+$(cd ${DESTDIR}/part/vos_a; cpio -idm < ${DESTDIR}/output-dom0-builder/rootfs.cpio)
 
 # copy over files needed in `/boot`
 mkdir ${DESTDIR}/part/vos_a/boot
 # linux
-cp ${DESTDIR}/output-dom0-builder-qemu_aarch64/initramfs-${_fullkver} ${DESTDIR}/part/vos_a/boot
-cp ${DESTDIR}/output-dom0-builder-qemu_aarch64/modloop-${_fullkver}   ${DESTDIR}/part/vos_a/boot
-cp ${DESTDIR}/output-dom0-builder-qemu_aarch64/vmlinuz-${_fullkver}   ${DESTDIR}/part/vos_a/boot
+cp ${DESTDIR}/output-dom0-builder/initramfs-${_fullkver} ${DESTDIR}/part/vos_a/boot
+cp ${DESTDIR}/output-dom0-builder/modloop-${_fullkver}   ${DESTDIR}/part/vos_a/boot
+cp ${DESTDIR}/output-dom0-builder/vmlinuz-${_fullkver}   ${DESTDIR}/part/vos_a/boot
 # xen
 cp ${DESTDIR}/viryaos-xen/boot/xen-${_fullxenver}                     ${DESTDIR}/part/vos_a/boot
 # dtb
