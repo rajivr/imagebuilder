@@ -1,8 +1,14 @@
+FROM viryaos/sdk-qemu-user-aarch64:v3.7-45f9eeb-x86_64 AS sdk-qemu-user-aarch64
+
 FROM dom0-builder-package AS dom0-builder-package
 FROM viryaos-xen-package-boot AS viryaos-xen-package-boot
 FROM viryaos-grub-package as viryaos-grub-package
 
 FROM arm64v8/alpine:3.7
+
+COPY --from=sdk-qemu-user-aarch64 /home/builder/sdk-qemu-user-aarch64/qemu-aarch64 /usr/bin/qemu-aarch64
+
+COPY --from=sdk-qemu-user-aarch64 /home/builder/sdk-qemu-user-aarch64/qemu-aarch64 /usr/bin/qemu-aarch64-static
 
 COPY [ \
   "./docker-extras/*", \
@@ -10,11 +16,6 @@ COPY [ \
 ]
 
 COPY ./viryaos.dtb /home/builder/viryaos.dtb
-
-COPY [ \
-  "qemu-aarch64", \
-  "/usr/bin/qemu-aarch64" \
-]
 
 RUN \
   # Add root to abuild group. This is required because we cannot su into user
