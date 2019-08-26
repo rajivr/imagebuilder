@@ -1,7 +1,6 @@
-FROM zynqmp-dt-config-package AS zynqmp-dt-config-package
+FROM zynqmp-dt-package AS zynqmp-dt-package
 FROM zynqmp-xen-package AS zynqmp-xen-package
-FROM zynqmp-dom0-kernel-package AS zynqmp-dom0-kernel-package
-FROM zynqmp-dom0-ramdisk-package AS zynqmp-dom0-ramdisk-package
+FROM zynqmp-dom0-package AS zynqmp-dom0-package
 FROM zynqmp-dom1-package AS zynqmp-dom1-package
 FROM zynqmp-dom2-package AS zynqmp-dom2-package
 
@@ -49,9 +48,8 @@ RUN \
   rm -rf /tmp/* && \
   rm -f /var/cache/apk/*
 
-COPY --from=zynqmp-dom0-kernel-package /home/builder/output-zynqmp-dom0-kernel/ /home/builder/output
-COPY --from=zynqmp-dom0-ramdisk-package /home/builder/output-zynqmp-dom0-ramdisk/ /home/builder/output
-COPY --from=zynqmp-dt-config-package /home/builder/output-zynqmp-dt-config/ /home/builder/output/
+COPY --from=zynqmp-dom0-package /home/builder/output-zynqmp-dom0/ /home/builder/output
+COPY --from=zynqmp-dt-package /home/builder/output-zynqmp-dt/ /home/builder/output/
 COPY --from=zynqmp-xen-package /home/builder/output-zynqmp-xen/ /home/builder/output
 COPY --from=zynqmp-dom1-package /home/builder/output-zynqmp-dom1/ /home/builder/output/zynqmp-dom1/
 COPY --from=zynqmp-dom2-package /home/builder/output-zynqmp-dom2/ /home/builder/output/zynqmp-dom2/
